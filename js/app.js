@@ -1,11 +1,22 @@
 function startApp() {
     const selectCategories = document.querySelector('#categories');
-    selectCategories.addEventListener('change', selectCategory);
-
     const result = document.querySelector('#result');
+
+
+    if(selectCategories) {
+        selectCategories.addEventListener('change', selectCategory);
+        getCategories();
+    }
+
+    const favoritesDiv = document.querySelector('.favorites');
+    if(favoritesDiv) {
+        getFavorites();
+    }
+
+
     const modal = new bootstrap.Modal('#modal', {});
 
-    getCategories();
+
 
     function getCategories() {
         const url = 'https://www.themealdb.com/api/json/v1/1/categories.php';
@@ -56,15 +67,15 @@ function startApp() {
 
             const recipeImage = document.createElement('img');
             recipeImage.classList.add('card-img-top');
-            recipeImage.alt = `Recipe image ${strMeal}`;
-            recipeImage.src = strMealThumb;
+            recipeImage.alt = `Recipe image ${strMeal ?? recipe.title}`;
+            recipeImage.src = strMealThumb ?? recipe.img;
 
             const recipeCardBody = document.createElement('div');
             recipeCardBody.classList.add('card-body');
 
             const recipeHeading = document.createElement('h3');
             recipeHeading.classList.add('card-title', 'mb-3');
-            recipeHeading.textContent = strMeal;
+            recipeHeading.textContent = strMeal ?? recipe.title;
 
             const recipeButton = document.createElement('button');
             recipeButton.classList.add('btn', 'btn-danger', 'w-100');
@@ -72,7 +83,7 @@ function startApp() {
             // recipeButton.dataset.bsTarget = '#modal';
             // recipeButton.dataset.bsToggle = 'modal';
             recipeButton.onclick = function() {
-                selectRecipe(idMeal);
+                selectRecipe(idMeal ?? recipe.id);
             }
 
             // HTML injection
@@ -130,12 +141,15 @@ function startApp() {
         // Modal buttons (close/fav)
         const favoriteBtn = document.createElement('button');
         favoriteBtn.classList.add('btn', 'btn-danger', 'col')
-        favoriteBtn.textContent = 'Save as favorite';
+        favoriteBtn.textContent = storageChecker(idMeal) ? 'Delete' : 'Save as favorite';
         modalFooter.appendChild(favoriteBtn);
 
         // Local Storage
         favoriteBtn.onclick = function() {
             if(storageChecker(idMeal)) {
+                removeFavorite(idMeal);
+                favoriteBtn.textContent = 'Save favorite';
+                showToast('Removed')
                 return;
             }
             addFavorite({
@@ -143,6 +157,8 @@ function startApp() {
                 title: strMeal,
                 img: strMealThumb
             });
+            favoriteBtn.textContent = 'Delete favorite';
+            showToast('Favorite added')
         }
 
         const closeModalBtn = document.createElement('button');
@@ -162,9 +178,37 @@ function startApp() {
         localStorage.setItem('favorites', JSON.stringify([...favorites, recipe]));
     }
 
+    function removeFavorite(id) {
+        const favorites = JSON.parse(localStorage.getItem('favorites')) ?? [];
+        const newFavorites = favorites.filter(fav => {
+            fav.id !== id;
+        })
+         localStorage.setItem('favorites', JSON.stringify(newFavorites));
+    }
+
     function storageChecker(id) {
         const favorites = JSON.parse(localStorage.getItem('favorites')) ?? [];
         return favorites.some(fav => fav.id === id);
+    }
+
+    function showToast(message) {
+        const toastDiv = document.querySelector('#toast');
+        const toastBody = document.querySelector('.toast-body');
+        const toast = new bootstrap.Toast(toastDiv);
+        toastBody.textContent = message;
+        toast.show();
+    }
+
+    function getFavorites() {
+        const favorites = JSON.parse(localStorage.getItem('favorites')) ?? [];
+        const noFavorites = document.createElement('p');
+        if(favorites.length) {
+            showRecipes(favorites);
+        }
+
+        noFavorites.textContent = 'End of favorites';
+        noFavorites.classList.add('fs-4', 'text-center', 'font-bold', 'mt-5');
+        result.appendChild(noFavorites);
     }
 
     function cleanHTML(selector) {
